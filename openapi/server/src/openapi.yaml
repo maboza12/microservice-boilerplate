@@ -1,0 +1,30 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Petstore
+  description: Multi-file boilerplate for OpenAPI Specification.
+  license:
+    name: MIT
+  contact:
+    name: Platform Support
+    url: http://www.platform.bakkt.com/support
+    email: platform@bakkt.com
+servers:
+  - url: http://petstore.bakkt.io/v1
+tags:
+  - name: pets
+
+paths:
+  /pets:
+    $ref: "./resources/pets.yaml"
+
+  /pets/{petId}:
+    $ref: "./resources/pet.yaml"
+
+components:
+  parameters:
+    $ref: "./parameters/_index.yaml"
+  schemas:
+    $ref: "./schemas/_index.yaml"
+  responses:
+    $ref: "./responses/_index.yaml"

@@ -1,0 +1,26 @@
+project.ext {
+
+    pacakageName = "com.bakkt.blockchain.weather"
+    // BuildScript
+    gradleVersion = "3.5.0"
+    googleServiceVersion = "4.2.0"
+
+    // SDK and Tools
+    buildTools = "29.0.3"
+    compileSdk = 29
+    minSdk = 16
+    targetSdk = 29
+
+}
+
+ext.appVersion = '1.0.0'
+
+//Projects follow the naming convention [domain]-[subdomain]-[context]-[deployname]
+ext.domain = 'platform'
+ext.subdomain = 'boilerplates'
+ext.context = 'sample'
+ext.deployname = 'microservice'
+ext.packageName = "com.${domain}.${subdomain}.${context}.${deployname}"
+
+ext.client_specName = "template-spec_${appVersion}.yaml"
+ext.server_specName = "template-spec_${appVersion}.yaml"

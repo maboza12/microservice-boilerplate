@@ -1,0 +1,32 @@
+import com.diffplug.gradle.spotless.SpotlessPlugin
+
+buildscript {
+    repositories repos
+    dependencies {
+        classpath "com.diffplug.spotless:spotless-plugin-gradle:6.12.0"
+    }
+}
+
+apply plugin: SpotlessPlugin
+
+spotless {
+    format 'misc', {
+        target '*.gradle', '*.md', '.gitignore'
+        trimTrailingWhitespace()
+        indentWithSpaces()
+        endWithNewline()
+    }
+    java {
+        targetExclude('build/**')
+        toggleOffOn()
+        importOrder()
+        removeUnusedImports()
+        googleJavaFormat()
+        formatAnnotations()
+        licenseHeader '/* Bakkt (C) $YEAR */' // or licenseHeaderFile
+    }
+}
+
+task formatCode(dependsOn: ['licenseFormat', 'spotlessApply'])
+
+build.dependsOn 'spotlessApply'

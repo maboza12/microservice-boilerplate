@@ -1,0 +1,142 @@
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
+buildscript {
+    ext.repos = {
+        mavenCentral()
+        mavenLocal()
+        jcenter()
+    }
+}
+
+plugins {
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.micronaut)
+    alias(libs.plugins.openapi)
+}
+
+apply from: './gradle/constants.gradle'
+apply from: './gradle/style.gradle'
+
+version = "${appVersion}"
+group = "com.${domain}"
+
+repositories {
+    mavenCentral()
+}
+
+compileJava.dependsOn tasks.spotlessApply
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("17")
+    targetCompatibility = JavaVersion.toVersion("17")
+}
+
+application {
+    mainClass.set("com.bakkt.blockchain.weather.Application")
+    sourceSets {
+        main {
+            java {
+                srcDir("$buildDir/generated/spec/src/main/java".toString())
+                srcDir("$buildDir/generated/clients/src/main/java".toString())
+            }
+            resources {
+                srcDir("$rootDir/openapi".toString())
+            }
+        }
+        test {
+            java {
+                srcDir("$buildDir/generated/spec/src/test/java".toString())
+                srcDir("$buildDir/generated/clients/src/test/java".toString())
+                srcDir("$rootDir/src/behavior/java".toString())
+            }
+            resources {
+                srcDir("$rootDir/src/behavior/resources".toString())
+            }
+        }
+    }
+}
+
+task clientGenerate(type: GenerateTask) {
+    generatorName = "java-micronaut-client"
+    inputSpec = "$rootDir/openapi/client/${client_specName}".toString()
+    outputDir = "$buildDir/generated/clients".toString()
+    apiPackage = "com.${domain}.${subdomain}.${context}.${deployname}.client"
+    invokerPackage = "ignored"
+    modelPackage = "com.${domain}.${subdomain}.${context}.${deployname}.client.model"
+    validateSpec = false
+    configOptions = [
+            build: 'gradle',
+            booleanGetterPrefix: 'is',
+            useAuth: 'false',
+            generateSwaggerAnnotations: 'false',
+            openApiNullable: 'false',
+            serializationLibrary: 'micronaut_serde_jackson'
+    ]
+}
+
+task cleanClientGenerate(type: Delete, dependsOn: 'clientGenerate') {
+    delete fileTree("$buildDir/generated/clients".toString()) {
+        include '**/ignored/*.java'
+    }
+}
+
+compileJava.dependsOn tasks.cleanClientGenerate
+
+openApiGenerate {
+    generatorName = "java-micronaut-server"
+    inputSpec = "$rootDir/openapi/server/${server_specName}".toString()
+    outputDir = "$buildDir/generated/server".toString()
+    apiPackage = "com.${domain}.${subdomain}.${context}.${deployname}.controller"
+    invokerPackage = "ignored"
+    modelPackage = "com.${domain}.${subdomain}.${context}.${deployname}.model"
+    configOptions = [
+            build: 'gradle',
+            booleanGetterPrefix: 'is',
+            useOptional: 'true',
+            useAuth: 'false',
+            generateControllerAsAbstract: 'true',
+            controllerPackage: 'ignored',
+            generateSwaggerAnnotations: 'false',
+            openApiNullable: 'false',
+            serializationLibrary: 'micronaut_serde_jackson'
+    ]
+}
+
+task cleanApiGenerate(type: Delete, dependsOn: 'openApiGenerate') {
+    delete fileTree("$buildDir/generated/spec".toString()) {
+        include '**/ignored/*.java'
+    }
+}
+
+task bundleOpenApiYaml(type: Exec) {
+    commandLine 'npx', 'swagger-cli', 'bundle', "$rootDir/openapi/server/src/openapi.yaml", '--outfile', "$rootDir/openapi/server/_build/openapi.yaml", '--type', 'yaml'
+}
+
+task lintOpenApi(type: Exec) {
+    commandLine 'spectral', 'lint', "$rootDir/openapi/server/_build/openapi.yaml", "--ruleset", "$rootDir/openapi/.spectral.yaml"
+}
+
+task mockOpenApiData(type: Exec) {
+    commandLine 'prism', 'mock', '-d', "$rootDir/openapi/server/_build/openapi.yaml"
+}
+
+task mockValidateOpenApiData(type: Exec) {
+    commandLine 'prism', 'proxy', "$rootDir/openapi/server/_build/openapi.yaml", "http://localhost:8080", "--errors"
+}
+
+task previewApi(type: Exec) {
+    commandLine 'redoc-cli', 'serve', "$rootDir/openapi/server/_build/openapi.yaml", '--options.onlyRequiredInSamples'
+}
+
+compileJava.dependsOn tasks.cleanApiGenerate
+
+graalvmNative.toolchainDetection = false
+
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("${packageName}.*")
+    }
+}
